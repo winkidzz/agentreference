@@ -72,9 +72,27 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message, session_id })
         });
-        const data = await res.json();
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let done = false;
+        let aiText = '';
+        // Create a single agent message div
+        const agentDiv = document.createElement('div');
+        agentDiv.className = 'agent';
+        agentDiv.textContent = 'Agent: ';
+        chatDiv.appendChild(agentDiv);
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          if (value) {
+            const chunk = decoder.decode(value);
+            aiText += chunk;
+            agentDiv.textContent = 'Agent: ' + aiText;
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+          }
+          done = doneReading;
+        }
         hideLoading();
-        appendMessage('agent', data.response);
       } catch (err) {
         hideLoading();
         appendMessage('agent', '[Error: ' + err + ']');
