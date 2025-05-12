@@ -16,11 +16,13 @@
 <body>
   <h2>Agent Chat</h2>
   <div>
-    <label>Session ID: <input id="session" value="demo-session"></label>
+    <label>Session ID: <input id="session" value="" readonly></label>
+    <button id="new-session-btn" style="margin-left: 1em;">New Session</button>
   </div>
   <div id="chat"></div>
   <div id="input-area">
     <input id="message" placeholder="Type your message..." autocomplete="off">
+    <input type="file" id="file-input">
     <button onclick="sendMessage()">Send</button>
   </div>
   <script>
@@ -28,8 +30,24 @@
     const sessionInput = document.getElementById('session');
     const messageInput = document.getElementById('message');
     const sendButton = document.querySelector('button');
+    const fileInput = document.getElementById('file-input');
     let history = [];
     let loadingDiv = null;
+    let sessionId = localStorage.getItem('session_id') || null;
+
+    // Set the session input field to the current sessionId (if any)
+    if (sessionId) sessionInput.value = sessionId;
+
+    // New Session button logic
+    document.getElementById('new-session-btn').onclick = function() {
+      // Generate a new session ID
+      sessionId = crypto.randomUUID();
+      localStorage.setItem('session_id', sessionId);
+      sessionInput.value = sessionId;
+      // Clear chat history
+      chatDiv.innerHTML = '';
+      console.log('[UI] New session started:', sessionId);
+    };
 
     function appendMessage(sender, text) {
       const div = document.createElement('div');
@@ -62,21 +80,44 @@
     async function sendMessage() {
       const session_id = sessionInput.value.trim() || 'default';
       const message = messageInput.value.trim();
-      if (!message) return;
-      appendMessage('user', message);
+      const file = fileInput.files[0];
+      if (!message && !file) return;
+      if (message) appendMessage('user', message);
+      if (file) appendMessage('user', `[Uploaded file: ${file.name}]`);
       messageInput.value = '';
+      fileInput.value = '';
       showLoading();
       try {
-        const res = await fetch('/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message, session_id })
-        });
+        let res;
+        if (file) {
+          const formData = new FormData();
+          formData.append('session_id', sessionId || '');
+          formData.append('message', message);
+          formData.append('file', file);
+          console.log('[UI] Sending message with file:', { sessionId, message, fileName: file.name });
+          res = await fetch('/chat', {
+            method: 'POST',
+            body: formData
+          });
+        } else {
+          console.log('[UI] Sending message:', { sessionId, message });
+          res = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message, session_id: sessionId })
+          });
+        }
+        const newSessionId = res.headers.get('X-Session-ID');
+        if (newSessionId && newSessionId !== sessionId) {
+          sessionId = newSessionId;
+          localStorage.setItem('session_id', sessionId);
+          sessionInput.value = sessionId;
+          console.log('[UI] Session ID updated from response header:', sessionId);
+        }
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let done = false;
         let aiText = '';
-        // Create a single agent message div
         const agentDiv = document.createElement('div');
         agentDiv.className = 'agent';
         agentDiv.textContent = 'Agent: ';
@@ -89,13 +130,16 @@
             aiText += chunk;
             agentDiv.textContent = 'Agent: ' + aiText;
             chatDiv.scrollTop = chatDiv.scrollHeight;
+            console.log('[UI] Received response chunk:', chunk);
           }
           done = doneReading;
         }
         hideLoading();
+        console.log('[UI] Full agent response:', aiText);
       } catch (err) {
         hideLoading();
         appendMessage('agent', '[Error: ' + err + ']');
+        console.error('[UI] Error during sendMessage:', err);
       }
     }
 
