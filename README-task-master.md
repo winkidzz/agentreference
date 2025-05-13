@@ -2,14 +2,83 @@
 
 ### by [@eyaltoledano](https://x.com/eyaltoledano)
 
-A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
+A task management system for AI-driven development, now configured for local LLMs (Gemma 3:27b via Ollama) and designed to work seamlessly with Cursor AI.
+
+## Project Implementation Notes
+
+- **Backend:** FastAPI app (`app/main.py`) exposes a `/chat` endpoint supporting both JSON and form-data, with session-based conversation context and optional file upload.
+- **LLM Integration:** Uses LangChain (`app/chain.py`) with a custom wrapper for local Gemma 3:27b via Ollama, supporting session memory for multi-turn chat.
+- **Model Loader:** `app/model.py` streams responses from the local Ollama server, supporting both text and (optionally) multimodal input.
+- **Frontend:** A static web UI (`static/chat.html`) enables interactive, session-based chat with the agent, including file upload and real-time streaming.
+- **Task Management:** Project tasks are tracked in `tasks/tasks.json`, reflecting the full development roadmap:
+  - All core backend and LLM integration tasks are complete.
+  - Pending tasks: simple web UI (partially implemented), authentication/logging, inference optimization, and documentation update.
+- **Local-Only LLM:** All inference is performed locally—no cloud API keys or external LLMs are required.
+- **Requirements Source:** See `scripts/prd.txt` for the original Product Requirements Document.
+- **Task Master AI Note:** Some MCP tools may not recognize `tasks.json` due to schema/path expectations, but manual tracking is up to date and accurate.
 
 ## Requirements
 
 - Node.js 14.0.0 or higher
-- Anthropic API key (Claude API)
-- Anthropic SDK version 0.39.0 or higher
-- OpenAI SDK (for Perplexity API integration, optional)
+- Python 3.10+ (for backend integration)
+- Ollama installed and running locally (https://ollama.com/)
+- Gemma 3:27b model pulled and available in Ollama
+- No cloud API keys required
+
+## Configuration
+
+The system is configured to use your local LLM (Gemma 3:27b) via Ollama. Ensure the following:
+
+- Ollama is running on your machine (default: http://localhost:11434)
+- Gemma 3:27b model is pulled: `ollama pull gemma:3b` or your preferred variant
+- The MCP/Task Master config (e.g., mcp.json) points to the local Ollama endpoint and model name
+- No Anthropic, OpenAI, or Perplexity API keys are needed
+
+### Example mcp.json
+
+```json
+{
+  "LLM_ENDPOINT": "http://localhost:11434/api/generate",
+  "MODEL_NAME": "gemma3:27b"
+}
+```
+
+## Installation
+
+```bash
+# Install globally
+npm install -g task-master-ai
+
+# OR install locally within your project
+npm install task-master-ai
+```
+
+### Initialize a new project
+
+```bash
+# If installed globally
+task-master init
+
+# If installed locally
+npx task-master-init
+```
+
+This will prompt you for project details and set up a new project with the necessary files and structure.
+
+## Quick Start with Local LLM (Ollama/Gemma)
+
+1. Start Ollama: `ollama serve` (if not already running)
+2. Pull the Gemma 3:27b model: `ollama pull gemma3:27b`
+3. Ensure your config points to the local endpoint and model
+4. Place your PRD in `scripts/prd.txt`
+5. Run: `task-master parse-prd scripts/prd.txt`
+6. Use all other Task Master commands as usual (see below)
+
+## No Cloud Dependency
+
+- All LLM-powered features (PRD parsing, task generation, complexity analysis, etc.) run locally using Gemma 3:27b via Ollama
+- No Anthropic, OpenAI, or Perplexity API keys are required
+- All data and inference remain private and offline
 
 ## Configuration
 
